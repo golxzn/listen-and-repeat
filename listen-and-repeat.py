@@ -43,11 +43,12 @@ def record_audio(duration: float, samplerate: int = 44100, device_index: int = N
 	for i in range(int(duration * 10)):
 		time.sleep(0.1)
 		remain: float = duration - i * 0.1
-		print(f"\rTime left (enter to interrupt): {remain:5.2f} sec", end="")
-		if keyboard.is_pressed('enter'):
+		print(f"\rTime left (space to interrupt): {remain:5.2f} sec", end="")
+		if keyboard.is_pressed('space'):
+			sd.stop()
 			break
 
-	print(f"\rTime left")
+	print(f"\rTime left (space to interrupt): 0.00 sec")
 	sd.wait()
 	return rec
 
