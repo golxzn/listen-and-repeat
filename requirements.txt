@@ -6,3 +6,4 @@ speechrecognition
 termcolor
 pocketsphinx
 pydub
+keyboard

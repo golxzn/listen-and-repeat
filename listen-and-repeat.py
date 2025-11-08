@@ -5,6 +5,7 @@ import datetime
 import difflib
 import random
 import numpy as np
+import keyboard
 import sounddevice as sd
 import soundfile as sf
 import pyttsx3
@@ -42,9 +43,12 @@ def record_audio(duration: float, samplerate: int = 44100, device_index: int = N
 	for i in range(int(duration * 10)):
 		time.sleep(0.1)
 		remain: float = duration - i * 0.1
-		print(f"\rTime left: {remain:5.2f} sec", end="")
+		print(f"\rTime left (enter to interrupt): {remain:5.2f} sec", end="")
+		if keyboard.is_pressed('enter'):
+			break
+
+	print(f"\rTime left")
 	sd.wait()
-	print()
 	return rec
 
 def recognize_offline(wav_path: str) -> str:
@@ -84,8 +88,9 @@ def main() -> None:
 		print("File not found:", sample_file)
 		sys.exit(1)
 
+	samples: list[str] = []
 	with open(sample_file, "r", encoding="utf-8") as f:
-		samples: list[str] = [line.strip() for line in f if line.strip()]
+		samples = f.readlines()
 
 	print(colored("Available audio input devices:", "cyan"))
 	devices: list[dict] = sd.query_devices()
@@ -108,6 +113,7 @@ def main() -> None:
 	print(colored("Microphone selected successfully. Starting test", "cyan"))
 
 	scores: list[float] = []
+	recognized_texts: list[str] = []
 	for idx, sentence in enumerate(samples, start=1):
 		print(colored(f"\n[{idx}/{len(samples)}] Sentence #{idx}", "magenta"))
 		# print(sentence)
@@ -125,9 +131,10 @@ def main() -> None:
 		sf.write(wav_path, recorded, 44100)
 
 		recognized_text: str = recognize_offline(wav_path) if os.path.exists(wav_path) else ""
+		recognized_texts.append(recognized_text)
 		txt_path: str = os.path.join(out_dir, f"sample_{idx:02d}.txt")
 		with open(txt_path, "w", encoding="utf-8") as f:
-			f.write(sentence + "\n" + recognized_text + "\n")
+			f.write(sentence.upper() + "\n" + recognized_text + "\n")
 
 		sim: float = similarity(sentence.upper(), recognized_text)
 		scores.append(sim)
@@ -139,16 +146,14 @@ def main() -> None:
 	total: float = float(np.mean(scores) * 100 if scores else 0.0)
 	print(f"Average accuracy: {total:.1f}%\n")
 
-	for idx, sentence in enumerate(samples, start=1):
-		txt_path: str = os.path.join(out_dir, f"sample_{idx:02d}.txt")
-		with open(txt_path, encoding="utf-8") as f:
-			lines: list[str] = [l.strip() for l in f.readlines()]
-		if len(lines) < 2:
-			continue
-		ref: str = lines[0]
-		hyp: str = lines[1]
+	for i in range(len(samples)):
+		ref: str = samples[i]
+		hyp: str = recognized_texts[i]
 		diff: str = highlight_diff(ref.upper(), hyp.upper())
-		print(f"{idx:02d}. {diff}  ({similarity(ref.upper(), hyp.upper())*100:.1f}%)")
+		print(f"{i + 1:02d}. Similarity: {similarity(ref.upper(), hyp.upper())*100:.1f}%")
+		print(f"     Reference : {ref}", end="")
+		print(f"     Recorded  : {hyp}")
+		print(f"     Difference: {diff}")
 
 if __name__ == "__main__":
 	main()
