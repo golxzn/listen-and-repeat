@@ -48,7 +48,7 @@ def record_audio(duration: float, samplerate: int = 44100, device_index: int = N
 			sd.stop()
 			break
 
-	print(f"\rTime left (space to interrupt): 0.00 sec")
+	print(f"\rTime left (space to interrupt):  0.00 sec")
 	sd.wait()
 	return rec
 
@@ -67,17 +67,31 @@ def highlight_diff(a: str, b: str) -> str:
 	highlighted: str = ""
 	for tag, i1, i2, j1, j2 in seq.get_opcodes():
 		if tag == "equal":
-			highlighted += a[i1:i2]
+			highlighted += colored(b[j1:j2], "green")
 		elif tag == "replace":
 			highlighted += colored(a[i1:i2], "red", attrs=["bold"])
 		elif tag == "delete":
 			highlighted += colored(a[i1:i2], "red")
 		elif tag == "insert":
-			highlighted += colored(b[j1:j2], "green")
+			highlighted += colored(a[i1:i2], "red")
 	return highlighted
+
+def highlight_score(score: float) -> str:
+	color: str = ""
+	if score < 50:
+		color = "red"
+	elif score < 80:
+		color = "yellow"
+	else:
+		color = "green"
+
+	return colored(f'{score:.1f}%', color)
 
 def similarity(a: str, b: str) -> float:
 	return difflib.SequenceMatcher(None, a, b).ratio()
+
+def prepare_sample(sample: str) -> str:
+	return sample.strip().replace('-', ' ').removesuffix('.');
 
 def main() -> None:
 	if len(sys.argv) != 2:
@@ -91,7 +105,7 @@ def main() -> None:
 
 	samples: list[str] = []
 	with open(sample_file, "r", encoding="utf-8") as f:
-		samples = f.readlines()
+		samples = [prepare_sample(line) for line in f.readlines()]
 
 	print(colored("Available audio input devices:", "cyan"))
 	devices: list[dict] = sd.query_devices()
@@ -145,16 +159,16 @@ def main() -> None:
 	print("\n" + "=" * 60)
 	print(colored("FINAL RESULTS", "green"))
 	total: float = float(np.mean(scores) * 100 if scores else 0.0)
-	print(f"Average accuracy: {total:.1f}%\n")
+	print(f"Average accuracy:", highlight_score(total), end='\n\n')
 
 	for i in range(len(samples)):
-		ref: str = samples[i]
+		orig: str = samples[i]
+		ref: str = orig.replace(',', '')
 		hyp: str = recognized_texts[i]
-		diff: str = highlight_diff(ref.upper(), hyp.upper())
-		print(f"{i + 1:02d}. Similarity: {similarity(ref.upper(), hyp.upper())*100:.1f}%")
-		print(f"     Reference : {ref}", end="")
-		print(f"     Recorded  : {hyp}")
-		print(f"     Difference: {diff}")
+		print(f"{i + 1:02d}. Similarity:", highlight_score(scores[i] * 100))
+		print(f"     Reference :", orig)
+		print(f"     Recorded  :", hyp)
+		print(f"     Difference:", highlight_diff(ref.upper(), hyp))
 
 if __name__ == "__main__":
 	main()
