@@ -1,0 +1,8 @@
+pyttsx3
+sounddevice
+soundfile
+numpy
+speechrecognition
+termcolor
+pocketsphinx
+pydub
